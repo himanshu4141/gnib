@@ -1,1 +1,1 @@
-worker: sh target/universal/stage/bin/gnib
+worker: sh target/universal/stage/scripts/gnib1

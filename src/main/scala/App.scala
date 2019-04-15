@@ -18,7 +18,7 @@ import io.circe.parser._
 
 object App extends App with StrictLogging{
 
-  var lastMessageSent: Either[String, String] = _
+  var lastMessageSent: scala.collection.mutable.Set[Either[String, String]] = scala.collection.mutable.Set()
 
   implicit val sttpBackend = NoVerifyHttpBackend.backend
 
@@ -51,46 +51,58 @@ object App extends App with StrictLogging{
   }
 
   while (true) {
-    val tokens = getToken()
-    val res = Await.result(
-      sttp
-        .headers(
-          Map(
-            ("Referer",
-             "https://burghquayregistrationoffice.inis.gov.ie/Website/AMSREG/AMSRegWeb.nsf/AppSelect?OpenForm")
-          ))
-        .get(get_apt_url(tokens._2, tokens._1))
-        .send()
-        .map(_.body),
-      Duration.Inf
-    )
 
-    {
-      for {
-        r <- res
-        _ = logger.debug(r)
-        j <- parse(r)
-      } yield root.slots.each.time.string.getAll(j)
-    } match {
-      case Right(v) if v.size > 1 => {
-        val message = "Following Appointments are available - \n\n" + v.mkString("\n")
+    try {
+      val tokens = getToken()
+      val res = Await.result(
+        sttp
+          .headers(
+            Map(
+              ("Referer",
+                "https://burghquayregistrationoffice.inis.gov.ie/Website/AMSREG/AMSRegWeb.nsf/AppSelect?OpenForm")
+            ))
+          .get(get_apt_url(tokens._2, tokens._1))
+          .send()
+          .map(_.body),
+        Duration.Inf
+      )
 
-        lastMessageSent match {
-          case Right(v) if message.equals(v) => ()
-          case _ => {
-            val sendResponse = Await.result (
-              Twilio.sendMessageReq(message).send().map(_.body),
-              Duration.Inf
-            )
-            logger.info(s"$sendResponse")
-            lastMessageSent = sendResponse.map(_ => message)
-          }
+      {
+        for {
+          r <- res
+          _ = logger.debug(r)
+          j <- parse(r)
+        } yield root.slots.each.time.string.getAll(j)
+      } match {
+        case Right(v) if v.size > 0 => {
+          val messages = v.map(s => {
+            val x = s.split("-")
+            s"Your appointment is coming up on ${x(0)} at ${x(1)}"
+          })
+
+          messages.foreach( message => {
+            if(lastMessageSent.exists( msgs => msgs match {
+              case Right(v) => message.equals(v)
+              case _ => false
+            })) {
+
+            } else {
+              val sendResponse = Await.result(
+                Twilio.sendMessageReq(message).send().map(_.body),
+                Duration.Inf
+              )
+              logger.info(s"$sendResponse")
+              lastMessageSent += sendResponse.map(_ => message)
+            }
+          })
         }
+        case _ => ()
       }
-      case _ => ()
-    }
 
-    Thread.sleep(1000)
+      Thread.sleep(1000)
+    } catch {
+      case e: Throwable => logger.error("Exception during this run", e)
+    }
   }
 }
 

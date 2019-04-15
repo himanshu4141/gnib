@@ -13,3 +13,27 @@ libraryDependencies += "com.typesafe.scala-logging"   %% "scala-logging"     % "
 libraryDependencies += "ch.qos.logback"                % "logback-classic"   % "1.2.3"
 
 enablePlugins(JavaAppPackaging)
+
+import com.typesafe.sbt.SbtNativePackager.packageArchetype
+// we specify the name for our fat jar
+assemblyJarName in assembly := "assembly-project.jar"
+
+// using the java server for this application. java_application is fine, too
+packageArchetype.java_server
+
+// removes all jar mappings in universal and appends the fat jar
+mappings in Universal := {
+  // universalMappings: Seq[(File,String)]
+  val universalMappings = (mappings in Universal).value
+  val fatJar = (assembly in Compile).value
+  // removing means filtering
+  val filtered = universalMappings filter {
+    case (file, name) =>  ! name.endsWith(".jar")
+  }
+  // add the fat jar
+  filtered :+ (fatJar -> ("lib/" + fatJar.getName))
+}
+
+
+// the bash scripts classpath only needs the fat jar
+scriptClasspath := Seq( (assemblyJarName in assembly).value )
