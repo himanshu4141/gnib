@@ -11,3 +11,5 @@ libraryDependencies += "io.circe"                     %% "circe-optics"      % "
 libraryDependencies += "io.circe"                     %% "circe-parser"      % "0.11.0"
 libraryDependencies += "com.typesafe.scala-logging"   %% "scala-logging"     % "3.9.0"
 libraryDependencies += "ch.qos.logback"                % "logback-classic"   % "1.2.3"
+
+enablePlugins(JavaAppPackaging)
