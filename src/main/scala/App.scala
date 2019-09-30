@@ -139,7 +139,7 @@ object Twilio {
     uri"https://api.twilio.com/2010-04-01/Accounts/AC52b2cf53a57bc623ac932e7bfa16c49b/Messages.json"
 
   def reqBody(body: String) = Map(
-    "To"   -> "whatsapp:+17165483380",
+    "To"   -> "whatsapp:+353834077070",
     "From" -> "whatsapp:+14155238886",
     "Body" -> body
   )
